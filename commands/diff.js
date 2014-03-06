@@ -78,6 +78,14 @@ define(['thirdparty/jsdiff', 'utils/misc_utils'], function (_na_, utils) { //JsD
 				e.path = path+e.old.name;
 				treePathList.push(e);
 				done();
+			} else if (e.old.isSubmodule || e.nu.isSubmodule) {
+				if (e.nu.isSubmodule && e.old.isSubmodule) {
+					e.path = path+e.old.name;
+					treePathList.push(e);
+					done();
+				} else {
+					console.error("DONT KNOW HOW TO HANDLE removing a submodule or making file/dir into submodule")
+				}
 			} else {
 				if (e.old.isBlob && !e.nu.isBlob) { // again easy whole new tree to add
 					treePathList = treePathList.concat(flattenTree(e.nu.entries, path, "nu"));
@@ -134,6 +142,11 @@ define(['thirdparty/jsdiff', 'utils/misc_utils'], function (_na_, utils) { //JsD
 			console.log('diff entry:', e);
 			var DEV_NULL =  '/dev/null';
 			if (e.nu && e.old) {
+				if (e.old.isSubmodule) {
+					diffText += "--- a/"+e.path+"\n+++ b/"+e.path+"\n";
+					diffText += "-Subproject commit "+utils.convertBytesToSha(e.old.sha) +"\n+Subproject commit "+utils.convertBytesToSha(e.nu.sha)+"\n";
+					done();
+				}
 				store._retrieveBlobsAsStrings([e.old.sha, e.nu.sha], function(objList) {
 					if (objList.length == 2) {
 						if (isBinary(objList[0].data) || isBinary(objList[1].data)) {
