@@ -62,73 +62,89 @@ define(['thirdparty/jsdiff', 'utils/misc_utils'], function (_na_, utils) { //JsD
 	// entry: the GitObject entry
 	var recursiveTreeDiff = function(oldTree, newTree, path, store, callback) {
 		console.log("recursiveTreeDiff start", oldTree, path);
-		path = (path) ? path+"/" : "";
+		path = (path) ? path : "";
 		var result = diffTree(oldTree, newTree);
 		console.log("diffTree result", result);
-		var treePathList = []; //each elem is obj with: path, nu, old with then pointing to a GitObject
+		var treePathList = []; //each elem is obj with: path, nu, old with them pointing to a GitObject
+				
+		flattenTree(result.add, path, "nu", store, function(tpNu) {
+			treePathList = treePathList.concat(tpNu);
+			flattenTree(result.remove, path, "old", store, function(tpOld) {
+				treePathList = treePathList.concat(tpOld);	
+			});
+			doModifiedList(result);
+		});
 		
-		if (result.add.length > 0) {
-			treePathList = treePathList.concat(flattenTree(result.add, path, "nu"));
-		}
-		if (result.remove.length > 0) {
-			treePathList = treePathList.concat(flattenTree(result.remove, path, "old"));
-		}
-		result.modified.asyncEach(function(e, done, i) {
-			if (e.old.isBlob && e.nu.isBlob) { // easy both a blobs
-				e.path = path+e.old.name;
-				treePathList.push(e);
-				done();
-			} else if (e.old.isSubmodule || e.nu.isSubmodule) {
-				if (e.nu.isSubmodule && e.old.isSubmodule) {
-					e.path = path+e.old.name;
+		
+		function doModifiedList(modifiedList) {
+			modifiedList.modified.asyncEach(function(e, done, i) {
+				if (e.old.isBlob && e.nu.isBlob) { // easy both a blobs
+					e.path = (path ? path+"/" : "")+e.old.name;
 					treePathList.push(e);
 					done();
+				} else if (e.old.isSubmodule || e.nu.isSubmodule) {
+					if (e.nu.isSubmodule && e.old.isSubmodule) {
+						e.path = (path ? path+"/" : "")+e.old.name;
+						treePathList.push(e);
+						done();
+					} else {
+						console.error("DONT KNOW HOW TO HANDLE removing a submodule or making file/dir into submodule")
+					}
 				} else {
-					console.error("DONT KNOW HOW TO HANDLE removing a submodule or making file/dir into submodule")
-				}
-			} else {
-				if (e.old.isBlob && !e.nu.isBlob) { // again easy whole new tree to add
-					treePathList = treePathList.concat(flattenTree(e.nu.entries, path, "nu"));
-					done();
-				} else if (!e.old.isBlob && e.nu.isBlob) {// again easy whole old tree to remove
-					treePathList = treePathList.concat(flattenTree(e.old.entries, path, "old"));
-					done();
-				} else { // bit more work - both old and nu are trees
-					var shalist = [e.old.sha, e.nu.sha];
-					store._retrieveObjectList(shalist, "Tree", function(objs) {
-						var subPath = e.old.name;
-						//call ourselves with the 2 modified subtrees
-						recursiveTreeDiff(objs[0], objs[1], subPath, store, function(subTreePathList) {
-							treePathList = treePathList.concat(subTreePathList);
-							done();
+					if (e.old.isBlob && !e.nu.isBlob) { // again easy whole new tree to add
+						treePathList = treePathList.concat(flattenTree(e.nu.entries, path, "nu", store));
+						done();
+					} else if (!e.old.isBlob && e.nu.isBlob) {// again easy whole old tree to remove
+						treePathList = treePathList.concat(flattenTree(e.old.entries, path, "old", store));
+						done();
+					} else { // bit more work - both old and nu are trees
+						var shalist = [e.old.sha, e.nu.sha];
+						store._retrieveObjectList(shalist, "Tree", function(objs) {
+							var subPath = e.old.name;
+							//call ourselves with the 2 modified subtrees
+							recursiveTreeDiff(objs[0], objs[1], subPath, store, function(subTreePathList) {
+								treePathList = treePathList.concat(subTreePathList);
+								done();
+							});
 						});
-					});
+					}
 				}
-			}
-		},
-		function () {
-			callback(treePathList);
-		});
+			},
+			function () {
+				callback(treePathList);
+			});	
+		}
 	};
 	
-	// walk down the tree and all its subtrees, returning a Array of objects, each obj has:
+	// walk down the tree and all its subtrees, passing into callback a Array of objects, each obj has:
 	// path: path in repo
 	// status: "old", "nu"
 	// entry: the GitObject entry
-	function flattenTree(entries, path, status) {
+	function flattenTree(entries, path, status, store, callback) {
 		var pathList = [];
-		for (var i = 0; i < entries.length; i++) {
-			var e = entries[i];
+		var currPath = path;
+		
+		entries.asyncEach(function(e, done, i) {
 			if (e.isBlob) { //a leaf node
 				var d = {}
-				d.path = path+e.name;
+				d.path = (path ? path+"/" : "")+e.name;
 				d[status] = e;
-				pathList[i] = d;
-			} else { //a branch node
-				pathList = pathList.concat(flattenTree(e.entries, path+e.name, status));
+				pathList.push(d);
+				done();
+			} else if (!e.isSubmodule) { //a branch node 
+				store._retrieveObjectList([e.sha], "Tree", function(objList) { //only want 1 entry
+					flattenTree(objList[0].entries, currPath+"/"+e.name, status, store, function(pl) {
+						pathList = pathList.concat(pl);
+						done();
+					});					
+				}, function() {
+					console.error("Failed to retrieve Tree Obj for:", e);
+					done();
+				});
 			}
-		}
-		return pathList;
+		}, function () {
+		 	  callback(pathList);
+		});
 	}
 	
 	/**
