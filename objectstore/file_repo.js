@@ -62,13 +62,16 @@ define(['formats/pack', 'formats/pack_index', 'objectstore/objects', 'utils/misc
 			this.objectsDir = objectsDir;
 			this.packs = packs;
 		},
-		_getCommitGraph : function(headShas, limit, callback){
+		_getCommitGraph : function(headShas, limit, callback, progress){
 			var commits = [];
 			var thiz = this;
 			var seen = {};
 			
 			var walkLevel = function(shas, callback){
 				var nextLevel = [];
+				if (progress && (typeof progress == 'function')) {
+					progress(commits.length);
+				}
 				shas.asyncEach(function(sha, callback){
 					if (seen[sha]){
 						callback();
