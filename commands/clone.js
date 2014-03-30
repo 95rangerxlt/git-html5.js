@@ -142,6 +142,17 @@ define(['commands/object2file', 'formats/smart_http_remote', 'formats/pack_index
                                 }, ferror); 
                             }, null, packProgress);
                         }, ferror);
+                        console.log("writing remote refs...", refs);
+                        refs.asyncEach(function(ref, done, i) {
+                            var localName;
+                            if (ref.name.indexOf('refs/tags') == 0) {
+                                localName = ref.name;
+                            } else {
+                                localName = ref.name.replace(/^refs/,'refs/remotes/origin');
+                            }
+                            console.log("writing ref:"+ localName);
+                            mkfile(gitDir, localName, ref.sha, function() { done();}, function() {  done(); ferror() });
+                        });
                     }, ferror);
                 });
             }, error, ferror);
