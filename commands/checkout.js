@@ -22,11 +22,11 @@ define(['commands/object2file', 'commands/conditions', 'utils/file_utils', 'util
     var checkout = function(options, success, error){
         var dir = options.dir,
             store = options.objectStore,
-            branch = options.branch,
+            ref = options.ref || ('refs/heads/'+options.branch),
             ferror = errutils.fileErrorFunc(error);
 
         
-        store._getHeadForRef('refs/heads/' + branch, function(branchSha){
+        store._getHeadForRef(ref, function(branchSha){
             store.getHeadSha(function(currentSha){
                 if (currentSha != branchSha){
                     Conditions.checkForUncommittedChanges(dir, store, function(config){
@@ -34,7 +34,7 @@ define(['commands/object2file', 'commands/conditions', 'utils/file_utils', 'util
                             store._retrieveObject(branchSha, "Commit", function(commit){
                                 var treeSha = commit.tree;
                                 object2file.expandTree(dir, store, treeSha, function(){
-                                    store.setHeadRef('refs/heads/' + branch, function(){
+                                    store.setHeadRef(ref, function(){
                                         store.updateLastChange(null, success);
                                     });
                                 });
@@ -43,7 +43,7 @@ define(['commands/object2file', 'commands/conditions', 'utils/file_utils', 'util
                     }, error);
                 }
                 else{
-                    store.setHeadRef('refs/heads/' + branch, success);
+                    store.setHeadRef(ref, success);
                 }
             });
         }, 
@@ -54,8 +54,7 @@ define(['commands/object2file', 'commands/conditions', 'utils/file_utils', 'util
             else{
                 ferror(e);
             }
-        });
-        
+        });        
     }
     return checkout;
 })
