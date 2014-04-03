@@ -147,11 +147,13 @@ define(['commands/object2file', 'formats/smart_http_remote', 'formats/pack_index
                             var localName;
                             if (ref.name.indexOf('refs/tags') == 0) {
                                 localName = ref.name;
-                            } else {
+                            } else if (ref.name != 'HEAD') {
                                 localName = ref.name.replace(/^refs/,'refs/remotes/origin');
                             }
-                            console.log("writing ref:"+ localName);
-                            mkfile(gitDir, localName, ref.sha, function() { done();}, function() {  done(); ferror() });
+                            if (localName) {
+                                console.log("writing ref:"+ localName);
+                                mkfile(gitDir, localName, ref.sha, function() { done();}, function() {  done(); ferror() });
+                            }
                         });
                     }, ferror);
                 });
