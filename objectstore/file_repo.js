@@ -216,10 +216,18 @@ define(['formats/pack', 'formats/pack_index', 'objectstore/objects', 'utils/misc
 		setHeadRef : function(refName, callback){
 			fileutils.mkfile(this.dir, '.git/HEAD', 'ref: ' + refName + '\n', callback, this.fileError);
 		},
+		setDetachedHead : function(sha, callback){
+			fileutils.mkfile(this.dir, '.git/HEAD', sha + '\n', callback, this.fileError);
+		},
 		getHeadRef : function(callback){
 			fileutils.readFile(this.dir, '.git/HEAD', 'Text', function(headStr){
-				// get rid of the initial 'ref: ' plus newline at end
-            	var headRefName = headStr.substring(5).trim();
+				var headRefName = headStr.trim();
+				if (headStr.substring(0,5) == "ref: ") {
+					// get rid of the initial 'ref: ' plus newline at end
+					headRefName = headStr.substring(5).trim();
+				} else {
+					console.log("using detached HEAD", headRefName)
+				}
             	callback(headRefName);
 			},this.fileError);
 		},

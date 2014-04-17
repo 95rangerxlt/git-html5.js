@@ -19,6 +19,7 @@ define(['utils/file_utils', 'utils/errors'], function(fileutils, errutils){
     var branch = function(options, success, error){
         var store = options.objectStore,
             ferror = errutils.fileErrorFunc(error),
+            sha = options.sha,
             branchName = options.branch;
 
         if (!checkBranchName(branchName)){
@@ -33,9 +34,13 @@ define(['utils/file_utils', 'utils/errors'], function(fileutils, errutils){
         store._getHeadForRef('refs/heads/' + branchName, branchAlreadyExists, function(e){
             if (e.code == FileError.NOT_FOUND_ERR){
                 store.getHeadRef(function(refName){
-                    store._getHeadForRef(refName, function(sha){
+                    if (sha) {
                         store.createNewRef('refs/heads/' + branchName, sha, success);
-                    }, ferror);
+                    } else {
+                        store._getHeadForRef(refName, function(sha){
+                            store.createNewRef('refs/heads/' + branchName, sha, success);
+                        }, ferror);
+                    }
                 });
             }
             else{

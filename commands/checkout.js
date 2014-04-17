@@ -23,10 +23,11 @@ define(['commands/object2file', 'commands/conditions', 'utils/file_utils', 'util
         var dir = options.dir,
             store = options.objectStore,
             ref = options.ref || ('refs/heads/'+options.branch),
+            sha = options.sha,
             ferror = errutils.fileErrorFunc(error);
 
         
-        store._getHeadForRef(ref, function(branchSha){
+        function _doCheckout(branchSha) {
             store.getHeadSha(function(currentSha){
                 if (currentSha != branchSha){
                     Conditions.checkForUncommittedChanges(dir, store, function(config){
@@ -43,18 +44,28 @@ define(['commands/object2file', 'commands/conditions', 'utils/file_utils', 'util
                     }, error);
                 }
                 else{
-                    store.setHeadRef(ref, success);
+                    if (sha) {
+                        store.setDetachedHead(sha, success);
+                    } else {
+                        store.setHeadRef(ref, success);
+                    }
                 }
             });
-        }, 
-        function(e){
-            if (e.code == FileError.NOT_FOUND_ERR){
-                error({type: errutils.CHECKOUT_BRANCH_NO_EXISTS, msg: CHECKOUT_BRANCH_NO_EXISTS_MSG});
-            }
-            else{
-                ferror(e);
-            }
-        });        
+        }
+
+        if (sha) {
+            setTimeout(_doCheckout(sha));
+        } else {
+            store._getHeadForRef(ref, _doCheckout, function(e){
+                console.error("checkout got error", e);
+                if (e.code == FileError.NOT_FOUND_ERR){
+                    error({type: errutils.CHECKOUT_BRANCH_NO_EXISTS, msg: CHECKOUT_BRANCH_NO_EXISTS_MSG});
+                }
+                else{
+                    ferror(e);
+                }
+            });
+        }
     }
     return checkout;
 })
