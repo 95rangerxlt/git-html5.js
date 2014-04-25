@@ -503,8 +503,13 @@ define(['formats/pack', 'formats/pack_index', 'objectstore/objects', 'utils/misc
 			else{
 				this.getConfig(doUpdate);
 			}
+		},
+		/**
+		 * callback with an ArrayBuffer of the contents of the dircache, aka .git/index file
+		 */
+		getDircache : function(callback, onerror){
+			fileutils.readFile(this.dir, '.git/index', 'ArrayBuffer', function(data){callback(data);}, onerror) ;	
 		}
-		
 	}
 
 	return FileObjectStore;

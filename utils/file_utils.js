@@ -132,6 +132,10 @@ define(['utils/misc_utils'], function(utils){
 					FileUtils.readBlob(file, dataType, callback);
 				});
 			},
+			/**
+			 * dataType needs to match one of the suffixes to the FileReader readAs* methods, 
+			 * eg. 'Text', 'ArrayBuffer', DataURL
+			 */
 			readFile : function(root, file, dataType, callback, error) {
 				
 				root.getFile(file, {create:false}, function(fileEntry){
