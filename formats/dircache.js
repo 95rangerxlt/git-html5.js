@@ -1,4 +1,5 @@
-define(['utils/misc_utils'], function(miscUtils) {
+"use strict";
+define(['utils/misc_utils', 'utils/file_utils'], function(miscUtils, fileUtils) {
     var HEADER_VER_OFFSET = 4;
     var HEADER_ENTRIES_COUNT_OFFSET = HEADER_VER_OFFSET + 4;
     var FIRST_ENTRY_OFFSET = HEADER_ENTRIES_COUNT_OFFSET + 4;
@@ -9,8 +10,7 @@ define(['utils/misc_utils'], function(miscUtils) {
     	var data = new DataView(buf);
         var uv8 = new Uint8Array(buf);
     	this.data = data;
-    	// read in the header
-        
+    	
         //check magic number...
         if ("DIRC" !== getASCIIChars(data, 4)) {
             console.error("INVALID Dircache file");
@@ -21,7 +21,7 @@ define(['utils/misc_utils'], function(miscUtils) {
         console.log("Dircache ver:"+versionNum+" entries:"+entriesCount);
         
         var FIRST_ENTRY_OFFSET = 12;
-        var entries = {};
+        var entries = {}; //map entry path to entry data obj
         var nextOffset = FIRST_ENTRY_OFFSET;
         var entry = {};
         for (var i=0; i < entriesCount; i++) {
@@ -29,9 +29,49 @@ define(['utils/misc_utils'], function(miscUtils) {
             entries[entry.path] = entry;
             entry = {};
         }
-        console.log("read entries", entries);
-    };
         
+        this.getEntry = function(path) {
+            return entries[path];
+        };
+        
+        this.entriesCount = function() {
+            return entriesCount;
+        };
+        
+        this.addEntry = function(path, sha, modDate, size) {
+            //TODO  - dont forget to update entriesCount
+        };
+        
+        /**
+         * @return an Array of entries in Git sort order
+         */
+        this.getSortedEntryPaths = function() {
+            var entryPathsSorted = Object.keys(entries);
+            //first sort entries per Git index sort order
+            return entryPathsSorted.sort();
+        };
+        
+        /**
+         * @return ArayBuffer with dircache formated to binary format expected by Git as per
+         *   http://code.google.com/p/git-core/source/browse/Documentation/technical/index-format.txt
+         */
+        this.getBinFormat = function() {
+            var header = createFileHeader(entries.length);
+            var binEntries = entries.map(createEntry);
+            var entriesSize = binEntries.reduce(function(prevVal, currVal){
+                return prevVal + currVal.length;
+            });
+            var res = new Uint8Array(header.length + entriesSize);
+            var offset = 0;
+            
+            var sortedEntryPaths = this.getSortedEntryPaths();
+            
+            binEntries.forEach(function(val) {
+                res.set(val, offset);
+                offset += val.length;
+            })
+        }
+    };  
 
     function compareShas(sha1, sha2){
          // assume the first byte has been matched in the fan out table
@@ -59,23 +99,24 @@ define(['utils/misc_utils'], function(miscUtils) {
     }
     
     /**
-     * @return Number, the number of bytes past offset that have a null followed by non-null byte
+     * @return String, null termindated string read from dataView, not inc the null char
      */
-    function findLastNull(dataView, offset) {
-        var currByte = dataView.getUint8(offset), prevByte, count = 0;
-        do {
-            prevByte = currByte;
-            currByte = dataView.getUint8(offset+(++count));
-        } while (!((currByte != 0) && (prevByte === 0)));
-        return count;
+    function readNullTermString(dataView, offset) {
+        var str = "";
+        var count = 0;
+        var c = dataView.getUint8(offset)
+        while (c != 0) {
+            str += String.fromCharCode(c);
+            c = dataView.getUint8(offset+(++count));
+        }
+        return str;
     }
     
-    function trimTrailingNulls(buf) {
-        var i=0;
-        do{
-            b = buf[i++];
-        }while ((b != 0) && (buf.length > i))
-        return  buf.subarray(0, i-1);
+    /**
+     * @return Number, the number of padding nulls required as per the Git Index file spec
+     */
+    function numberOfPaddingNulls(entrySize) {
+        return 8 - (entrySize % 8); //allow for upto 8 padding nulls
     }
     
     /**
@@ -83,7 +124,7 @@ define(['utils/misc_utils'], function(miscUtils) {
      * sha (String), path (String), modTime (Date), size (Number)
      * returns the new offset
      */
-    function readEntry (dataView, uint8Arr, offset, entry) {
+    function readEntry(dataView, uint8Arr, offset, entry) {
         var FILE_SIZE_OFFSET = offset + (4 * 9); //10th 32bit field
         var SHA_OFFSET = FILE_SIZE_OFFSET + 4;
         var FLAGS_V2_OFFSET = SHA_OFFSET + 20; //160 bits for sha1 
@@ -95,9 +136,34 @@ define(['utils/misc_utils'], function(miscUtils) {
         entry.modTime = new Date(time * 1000);
         entry.size = dataView.getUint32(FILE_SIZE_OFFSET);
         entry.sha = miscUtils.convertBytesToSha(getShaAtIndex(uint8Arr, SHA_OFFSET));
-        var nextEntryOffset = findLastNull(dataView, PATH_OFFSET);
-        entry.path = miscUtils.bytesToString(trimTrailingNulls(uint8Arr.subarray(PATH_OFFSET,PATH_OFFSET+nextEntryOffset)));
+        entry.path = readNullTermString(dataView, PATH_OFFSET);
+        var entrySize = (PATH_OFFSET - offset);
+        var padding = numberOfPaddingNulls(entrySize + entry.path.length);
+        var nextEntryOffset = entry.path.length + padding;
         return PATH_OFFSET + nextEntryOffset;
     }
+    
+    // given a entry JS obj, return a uint8Array for the entry in format for index file
+    // entry is expected to have the props:
+    // path, sha, size, modDate 
+    function createEntry(entry) {
+        //10 32b stat-fields, 20 for 160bit SHA,2 for 16b flags
+        var size = (10 * 4) + 20 + 2 + entry.path.length + 1;
+        var nullExtras = size % 8;
+        size += nullExtras;
+        var dv = new DataView(new Uint8Array(size).buffer);
+        dv.setUint32()
+        return dv.buffer;
+    }
+    
+    function createFileHeader(entryCount) {
+        var headerDV = new DataView(new ArraUint8Array(12).buffer);
+        headerDV.setUint32(0, 1145655875);// "DIRC" as first 4 bytes in ascii
+        headerDV.setUint32(4, 2);
+        headerDV.setUint32(8, entryCount || 0);
+        return headerDV;
+    }
+    
+    // RETURN for this module
     return Dircache;
 });
