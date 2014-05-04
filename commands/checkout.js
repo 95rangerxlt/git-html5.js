@@ -52,9 +52,9 @@ define(['commands/object2file', 'commands/conditions', 'utils/file_utils', 'util
                 }
             });
         }
-
+        
         if (sha) {
-            setTimeout(_doCheckout(sha));
+            setTimeout(function() {_doCheckout(sha);});
         } else {
             store._getHeadForRef(ref, _doCheckout, function(e){
                 console.error("checkout got error", e);
