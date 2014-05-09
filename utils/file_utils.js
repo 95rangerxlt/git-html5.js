@@ -19,6 +19,19 @@ define(['utils/misc_utils'], function(utils){
 			func.call(list, list[i], finish, i);
 		}
 	}
+	
+	var ErrorNames = Object.freeze({
+		ABORT_ERR: 'AbortError',
+		INVALID_MODIFICATION_ERR: 'InvalidModificationError',
+		INVALID_STATE_ERR: 'InvalidStateError',
+		NO_MODIFICATION_ALLOWED_ERR: 'NoModificationAllowedError',
+		NOT_FOUND_ERR: 'NotFoundError',
+		NOT_READABLE_ERR: 'NotReadable',
+		PATH_EXISTS_ERR: 'PathExistsError',
+		QUOTA_EXCEEDED_ERR: 'QuotaExceededError',
+		TYPE_MISMATCH_ERR: 'TypeMismatchError',
+		ENCODING_ERR: 'EncodingError',
+	});
 
 	var FileUtils = (function(){
 		
@@ -141,8 +154,9 @@ define(['utils/misc_utils'], function(utils){
 				root.getFile(file, {create:false}, function(fileEntry){
 					FileUtils.readFileEntry(fileEntry, dataType, callback, error);
 				}, error);
-			}
-		
+			},
+			
+			Errors : ErrorNames
 		};
 	}
 	)();
