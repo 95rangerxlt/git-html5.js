@@ -233,8 +233,12 @@ define(['formats/pack', 'formats/pack_index', 'objectstore/objects', 'utils/misc
 		},
 		getHeadSha : function(callback){
 			var self = this;
-			this.getHeadRef(function(ref){
-				self._getHeadForRef(ref, callback, self.fileError);
+			this.getHeadRef(function(maybeRef){
+				if (maybeRef.indexOf("ref") == 0) {
+					self._getHeadForRef(maybeRef, callback, self.fileError);
+				} else { //detached head not a ref
+					callback(maybeRef);
+				}
 			});
 		},
 		getAllHeads : function(callback){
@@ -475,10 +479,11 @@ define(['formats/pack', 'formats/pack_index', 'objectstore/objects', 'utils/misc
 			fileutils.readFile(this.dir, '.git/config.json', 'Text', function(configStr){
 				success(JSON.parse(configStr));
 			}, function(e){
-				if (e.code == FileError.NOT_FOUND_ERR){
+				if (e.code == FileError.NOT_FOUND_ERR) {
+					console.error("no json config")
 					success({});
-				}
-				else{
+				} else {
+					console.error("foobar")
 					fe(e);
 				}
 			});

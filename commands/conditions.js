@@ -5,7 +5,6 @@ define(['utils/file_utils', 'utils/errors'],function(fileutils, errutils){
         checkForUncommittedChanges : function(dir, store, callback, error){
             var lastUpdate;
             var walkDir = function(dir, callback){
-                
                 dir.getMetadata(function(md){
                     if (md.modificationTime > lastUpdate){
                         callback(true);
