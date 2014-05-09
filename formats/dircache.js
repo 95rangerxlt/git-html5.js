@@ -38,8 +38,16 @@ define(['utils/misc_utils', 'utils/file_utils'], function(miscUtils, fileUtils) 
             return entriesCount;
         };
         
-        this.addEntry = function(path, sha, modDate, size) {
-            //TODO  - dont forget to update entriesCount
+        this.addEntry = function(path, sha, modTime, size) {
+            if (!entries[path]) {
+                entriesCount++;
+            }
+            entries[path] = {
+                sha: sha,
+                path: path,
+                modTime : modTime,
+                size : size
+            };
         };
         
         /**
