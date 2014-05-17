@@ -7,8 +7,8 @@ define(['utils/file_utils', 'utils/errors'],function(fileutils, errutils){
             var walkDir = function(dir, callback){
                 dir.getMetadata(function(md){
                     if (md.modificationTime > lastUpdate){
-                        callback(true);
-                        return;
+//                         callback(true);
+//                         return;
                     }
                     fileutils.ls(dir, function(entries){
                         var changed;
@@ -33,7 +33,7 @@ define(['utils/file_utils', 'utils/errors'],function(fileutils, errutils){
                             else{
                                 entry.getMetadata(function(md){
                                     if (md.modificationTime > lastUpdate){
-                                        changed = true;
+//                                         changed = true;
                                     }
                                     done();
                                 }, done);

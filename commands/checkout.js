@@ -33,16 +33,26 @@ define(['commands/object2file', 'commands/conditions', 'utils/file_utils', 'util
                         blowAwayWorkingDir(dir, function(){
                             store._retrieveObject(branchSha, "Commit", function(commit){
                                 var treeSha = commit.tree;
-                                object2file.expandTree(dir, store, treeSha, function(){
-                                    if (sha) {
-                                        store.setDetachedHead(sha, function() {
-                                            store.updateLastChange(null, success);
-                                        });
-                                    } else if (ref) {
-                                        store.setHeadRef(ref, function(){
-                                            store.updateLastChange(null, success);
-                                        });
-                                    }
+                                object2file.expandTree(dir, store, treeSha, function(dircache){
+                                    console.log("got back dircache",dircache)
+                                    try {
+                                        var dirCacheArrayBuffer = dircache.getBinFormat();
+                                        if (sha) {
+                                            store.setDetachedHead(sha, function() {
+                                                store.updateLastChange(null, success);
+                                                console.log("write dircache detached")
+                                                store.writeDircache(dirCacheArrayBuffer, success, error);
+                                            });
+                                        } else if (ref) {
+                                            store.setHeadRef(ref, function(){
+                                                store.updateLastChange(null, success);
+                                                console.log("write dircache ref")
+                                                store.writeDircache(dirCacheArrayBuffer, success, error);
+                                            });
+                                        }
+                                    } catch(e) {
+                                        console.error("Err:", e.stack);
+                                    } 
                                 });
                              });
                         }, ferror);
@@ -65,7 +75,8 @@ define(['commands/object2file', 'commands/conditions', 'utils/file_utils', 'util
             });
         }
         if (!ref && !sha) {
-            error(new Error("MISSING Ref or Sha, Cannot Checkout"));
+            error("MISSING Ref or Sha, Cannot Checkout");
+            return;
         }
         
         if (sha) { // already have the commit sha we need to checkout
@@ -74,7 +85,7 @@ define(['commands/object2file', 'commands/conditions', 'utils/file_utils', 'util
             store._getHeadForRef(ref, _doCheckout, function(e){
                 console.error("checkout got error", e);
                 if (e.code == FileError.NOT_FOUND_ERR){
-                    error({type: errutils.CHECKOUT_BRANCH_NO_EXISTS, msg: CHECKOUT_BRANCH_NO_EXISTS_MSG});
+                    error({type: errutils.CHECKOUT_BRANCH_NO_EXISTS, msg: errutils.CHECKOUT_BRANCH_NO_EXISTS_MSG});
                 }
                 else{
                     ferror(e);

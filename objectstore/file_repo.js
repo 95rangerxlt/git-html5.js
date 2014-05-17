@@ -237,7 +237,7 @@ define(['formats/pack', 'formats/pack_index', 'objectstore/objects', 'utils/misc
 				if (maybeRef.indexOf("ref") == 0) {
 					self._getHeadForRef(maybeRef, callback, self.fileError);
 				} else { //detached head not a ref
-					callback(maybeRef);
+				    callback(maybeRef);
 				}
 			});
 		},
@@ -514,6 +514,11 @@ define(['formats/pack', 'formats/pack_index', 'objectstore/objects', 'utils/misc
 		 */
 		getDircache : function(callback, onerror){
 			fileutils.readFile(this.dir, '.git/index', 'ArrayBuffer', function(data){callback(data);}, onerror) ;	
+		},
+		
+		writeDircache : function(dircacheData, callback, onerror) {
+			console.log("writing out new dircache", dircacheData);
+			fileutils.mkfile(this.dir, '.git/index', dircacheData, callback, onerror);
 		}
 	}
 
