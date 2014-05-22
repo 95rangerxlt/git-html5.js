@@ -1,18 +1,23 @@
 define(['utils/file_utils', 'formats/dircache'], function(fileutils, Dircache){
 
+    var DIRCACHE_SUBMODULE_BYTE_SIZE = 4096;
     var dc = new Dircache();
+
+    var addToDircache = function(dir, name, sha, size) {
+        var delim = dir.fullPath.substring(1).indexOf("/"); //substring to skip leading "/"
+        var dirPath = (delim > 0) ? dir.fullPath.substring(delim+2)+"/" : ""; //skip top-level work dir in path
+        dc.addEntry(dirPath + name, sha, new Date(), size);
+    };
 
     var expandBlob = function(dir, store, name, blobSha, callback){
         var makeFileFactory = function(name){
             return function(blob){
-                var delim = dir.fullPath.substring(1).indexOf("/"); //substring to skip leading "/"
-                var dirPath = (delim > 0) ? dir.fullPath.substring(delim+2)+"/" : ""; //skip top-level work dir in path
-                dc.addEntry(dirPath + name, blobSha, new Date(), blob.data.byteLength);                
-                fileutils.mkfile(dir, name, blob.data, callback, function(e){console.log(e)});
-            }
-        }
+                addToDircache(dir, name, blobSha, blob.data.byteLength);           
+                fileutils.mkfile(dir, name, blob.data, callback, function(e){console.log(e);});
+            };
+        };
         store._retrieveObject(blobSha, "Blob", makeFileFactory(name));
-    }
+    };
 
     var expandTree = function(dir, store, treeSha, callback){
         
@@ -27,6 +32,7 @@ define(['utils/file_utils', 'formats/dircache'], function(fileutils, Dircache){
                     var sha = entry.sha;
                     fileutils.mkdirs(dir, entry.name, function(newDir){
                         if (entry.isSubmodule) {
+                            addToDircache(dir, entry.name, sha, DIRCACHE_SUBMODULE_BYTE_SIZE);
                             setTimeout(done, 0); //submodule dir never has contents
                         } else {
                             expandTree(newDir, store, sha, done);
@@ -35,11 +41,11 @@ define(['utils/file_utils', 'formats/dircache'], function(fileutils, Dircache){
                 }
             }, function() { callback(dc); } );
         });
-    }
+    };
 
     return {
         expandTree : expandTree,
         expandBlob : expandBlob
-    }
+    };
 
 });
