@@ -214,7 +214,11 @@ define(['formats/pack', 'formats/pack_index', 'objectstore/objects', 'utils/misc
 			fileutils.mkfile(this.dir, '.git/' + refName, sha + '\n', success, this.fileError);
 		},
 		setHeadRef : function(refName, callback){
-			fileutils.mkfile(this.dir, '.git/HEAD', 'ref: ' + refName + '\n', callback, this.fileError);
+			if (refName.indexOf('refs') != 0) {
+				this.setDetachedHead(refName, callback);
+			} else {
+				fileutils.mkfile(this.dir, '.git/HEAD', 'ref: ' + refName + '\n', callback, this.fileError);
+			}
 		},
 		setDetachedHead : function(sha, callback){
 			fileutils.mkfile(this.dir, '.git/HEAD', sha + '\n', callback, this.fileError);
