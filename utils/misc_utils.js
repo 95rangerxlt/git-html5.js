@@ -113,6 +113,32 @@ define(['thirdparty/inflate.min', 'thirdparty/deflate.min'], function(){
                     A[key] = B[key];
                 }
             }
+        },
+        // dir is a String of a file system path, will return it with the parent dir in the path removed
+        // will also handle any leading forward slash
+        stripParentDir: function(path) {
+            var delim = path.substring(1).indexOf("/"); //substring to skip leading "/"
+            return (delim > 0) ? path.substring(delim+2) : ""; //skip top-level work dir in path
+        },
+        // call fn for each item in array, calling callback when done
+        // courtesy of http://zef.me/3420/async-foreach-in-javascript
+        asyncForEach: function(array, fn, callback) {
+            array = array.slice(0);
+            function processOne() {
+                var item = array.pop();
+                fn(item, function(result) {
+                    if(array.length > 0) {
+                        processOne();
+                    } else {
+                        callback(); // Done!
+                    }
+                });
+            }
+            if(array.length > 0) {
+                processOne(); // schedule immediately
+            } else {
+                callback(); // Done!
+            }
         }
     }
 

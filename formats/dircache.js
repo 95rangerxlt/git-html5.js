@@ -94,12 +94,8 @@ define(['utils/misc_utils', 'utils/file_utils', 'thirdparty/2.2.0-sha1'], functi
             });
             //now take sha of whole thing
             sha1OfBin = Crypto.SHA1(indexBinary.subarray(0, indexBinary.byteLength - 20));
-            console.log("index bin sha:", sha1OfBin)
             sha1OfBin = miscUtils.convertShaToBytes(sha1OfBin);
-            console.log("sha of index", sha1OfBin)
-            console.log("assert offset = size-20:"+(offset === (indexBinary.byteLength - 20)));
             indexBinary.set(sha1OfBin, offset);
-            console.log("end of index", indexBinary.subarray(indexBinary.byteLength - 20))
             return indexBinary.buffer;
         }
     };  

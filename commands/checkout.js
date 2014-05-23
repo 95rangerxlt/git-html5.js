@@ -1,6 +1,7 @@
 define(['commands/object2file', 'commands/conditions', 'utils/file_utils', 'utils/errors'], function(object2file, Conditions, fileutils, errutils){
     
     var blowAwayWorkingDir = function(dir, success, error){
+        console.log("BLOW AWAY WORKING DIR!!");
         fileutils.ls(dir, function(entries){
             entries.asyncEach(function(entry, done){
                 if (entry.isDirectory){
@@ -24,39 +25,49 @@ define(['commands/object2file', 'commands/conditions', 'utils/file_utils', 'util
             store = options.objectStore,
             ref = options.ref || (options.branch ? ('refs/heads/'+options.branch) : undefined),
             sha = options.sha,
+            nocheck = options.nocheck,
             ferror = errutils.fileErrorFunc(error);
+        
+        function unConditionalCheckout() {
+            blowAwayWorkingDir(dir, function(){
+                console.log("old Workdir gone!");
+                store._retrieveObject(branchSha, "Commit", function(commit){
+                    var treeSha = commit.tree;
+                    object2file.expandTree(dir, store, treeSha, function(dircache){
+                        console.log("got back dircache",dircache)
+                        try {
+                            var dirCacheArrayBuffer = dircache.getBinFormat();
+                            if (sha) {
+                                store.setDetachedHead(sha, function() {
+                                    store.updateLastChange(null, success);
+                                    console.log("write dircache detached")
+                                    store.writeDircache(dirCacheArrayBuffer, success, error);
+                                });
+                            } else if (ref) {
+                                store.setHeadRef(ref, function(){
+                                    store.updateLastChange(null, success);
+                                    console.log("write dircache ref")
+                                    store.writeDircache(dirCacheArrayBuffer, success, error);
+                                });
+                            }
+                        } catch(e) {
+                            console.error(e);
+                        } 
+                    });
+                 });
+            }, ferror);
+        }
         
         function _doCheckout(branchSha) {
             store.getHeadSha(function(currentSha){
                 if (currentSha != branchSha){
-                    Conditions.checkForUncommittedChanges(dir, store, function(config){
-                        blowAwayWorkingDir(dir, function(){
-                            store._retrieveObject(branchSha, "Commit", function(commit){
-                                var treeSha = commit.tree;
-                                object2file.expandTree(dir, store, treeSha, function(dircache){
-                                    console.log("got back dircache",dircache)
-                                    try {
-                                        var dirCacheArrayBuffer = dircache.getBinFormat();
-                                        if (sha) {
-                                            store.setDetachedHead(sha, function() {
-                                                store.updateLastChange(null, success);
-                                                console.log("write dircache detached")
-                                                store.writeDircache(dirCacheArrayBuffer, success, error);
-                                            });
-                                        } else if (ref) {
-                                            store.setHeadRef(ref, function(){
-                                                store.updateLastChange(null, success);
-                                                console.log("write dircache ref")
-                                                store.writeDircache(dirCacheArrayBuffer, success, error);
-                                            });
-                                        }
-                                    } catch(e) {
-                                        console.error("Err:", e.stack);
-                                    } 
-                                });
-                             });
-                        }, ferror);
-                    }, error);
+                    if (nocheck) {
+                        setTimeout(unConditionalCheckout);    
+                    } else {
+                        Conditions.checkForUncommittedChanges(dir, store, function(){
+                            unConditionalCheckout(dir, store);
+                        }, error);
+                    }
                 }
                 else { // already have the sha checkouted out, so just update HEAD ref if needed
                     store.getHeadRef(function(HEAD) {
@@ -74,6 +85,7 @@ define(['commands/object2file', 'commands/conditions', 'utils/file_utils', 'util
                 }
             });
         }
+        
         if (!ref && !sha) {
             error("MISSING Ref or Sha, Cannot Checkout");
             return;

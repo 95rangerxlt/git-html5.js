@@ -14,9 +14,13 @@ define(['utils/misc_utils'], function(utils){
 				callback();
 			}
 		}
-		
 		for (var i = 0; i < list.length; i++){
-			func.call(list, list[i], finish, i);
+			try {
+				func.call(list, list[i], finish, i);
+			} catch(e) {
+				console.error(e);
+				finish();
+			}
 		}
 	}
 	
