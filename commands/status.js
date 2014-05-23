@@ -12,10 +12,6 @@ define(['utils/file_utils', 'utils/errors', 'utils/misc_utils', 'formats/dircach
                         var changed;
                         var result = [];
                         miscUtils.asyncForEach(entries, function(entry, done){
-                            if (result.length > 0){
-                                done();
-                                return;
-                            }
                             if (entry.isDirectory){
                                 if (entry.name == '.git'){
                                     done();
@@ -32,13 +28,13 @@ define(['utils/file_utils', 'utils/errors', 'utils/misc_utils', 'formats/dircach
                                     try {
                                         var path = miscUtils.stripParentDir(entry.fullPath);
                                         var cacheEntry = dcache.getEntry(path);
-                                        //console.log("check modtime for:", path, md.modificationTime);
+                                        console.log("check modtime for:", path, md.modificationTime);
                                         if (!cacheEntry) {
                                             console.log("found not dircache file:"+path);
                                             result.push(entry);
                                         } else if ((md.modificationTime.getTime()) > cacheEntry.modTime.getTime()){
-                                               console.log("found dirty:"+path, md.modificationTime.getTime() +"::"+cacheEntry.modTime.getTime());
-                                               result.push(entry);
+                                            console.log("found dirty:"+path, md.modificationTime.getTime() +"::"+cacheEntry.modTime.getTime());
+                                            result.push(entry);
                                         }
                                     } catch(e) {
                                         console.error(e);
