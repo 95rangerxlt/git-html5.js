@@ -233,6 +233,10 @@ define(['utils/misc_utils', 'utils/file_utils', 'thirdparty/2.2.0-sha1'], functi
         return headerDV.buffer;
     }
     
+    function getDircache(buffer) {
+        return new Dircache(buffer);
+    }
+    
     // RETURN for this module
-    return Dircache;
+    return getDircache;
 });

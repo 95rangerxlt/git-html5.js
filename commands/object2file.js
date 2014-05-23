@@ -1,7 +1,7 @@
-define(['utils/file_utils', 'utils/misc_utils', 'formats/dircache'], function(fileutils, miscUtils, Dircache){
+define(['utils/file_utils', 'utils/misc_utils', 'formats/dircache'], function(fileutils, miscUtils, dircache){
 
     var DIRCACHE_SUBMODULE_BYTE_SIZE = 4096;
-    var dc = new Dircache();
+    var dc = dircache();
 
     var addToDircache = function(dir, name, sha, modTime, size) {
         var relativePath = miscUtils.stripParentDir(dir.fullPath);
