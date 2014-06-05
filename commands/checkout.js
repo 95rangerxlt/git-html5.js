@@ -31,7 +31,7 @@ define(['commands/object2file', 'commands/conditions', 'utils/file_utils', 'util
         function unConditionalCheckout() {
             blowAwayWorkingDir(dir, function(){
                 console.log("old Workdir gone!");
-                store._retrieveObject(branchSha, "Commit", function(commit){
+                store._retrieveObject(sha, "Commit", function(commit){
                     var treeSha = commit.tree;
                     object2file.expandTree(dir, store, treeSha, function(dircache){
                         console.log("got back dircache",dircache)
@@ -59,6 +59,7 @@ define(['commands/object2file', 'commands/conditions', 'utils/file_utils', 'util
         }
         
         function _doCheckout(branchSha) {
+            sha = branchSha;
             store.getHeadSha(function(currentSha){
                 if (currentSha != branchSha){
                     if (nocheck) {
